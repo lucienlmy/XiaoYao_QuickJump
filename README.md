@@ -53,6 +53,11 @@
 
 <img width="1163" height="590" alt="暗色主题" src="https://github.com/user-attachments/assets/824a2783-a6f9-4662-855d-46277a9a64cf" />
 
+- **集成Everything**：如果后台有运行Everything程序，可调用其搜索
+
+<img width="456" height="348" alt="image" src="https://github.com/user-attachments/assets/f398407a-1bdb-4ac1-887f-bf9b9161543b" />
+
+
 ###  更多使用说明
 
 **在Double Commander中的设置步骤**：
