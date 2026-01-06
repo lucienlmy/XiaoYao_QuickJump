@@ -109,12 +109,16 @@ if (参数1="-常驻窗口跟随"){
         global 名称列最大宽度:=Var_Read("名称列最大宽度","200","基础配置",软件安装路径 "\个人配置.ini","是")
         global 单击运行跳转:=Var_Read("单击运行跳转","关闭","基础配置",软件安装路径 "\个人配置.ini","是")
 
+        global 悬停提示状态:=Var_Read("悬停提示状态","1","基础配置",软件安装路径 "\个人配置.ini","是")
+        global 延迟悬停显示:=Var_Read("延迟悬停显示","300","基础配置",软件安装路径 "\个人配置.ini","是")
+        global 不存在时新建:=Var_Read("不存在时新建","关闭","基础配置",软件安装路径 "\个人配置.ini","是")
+
         loop 5
         {
             常用路径开关%A_Index%:= Var_Read("常用路径开关" A_Index,"0","基础配置",软件安装路径 "\个人配置.ini","是")
             if (常用路径开关%A_Index%="1"){
                 常用路径名称%A_Index%:= Var_Read("常用路径名称" A_Index,"常用" A_Index,"基础配置",软件安装路径 "\个人配置.ini","是")
-                常用路径%A_Index%:= 程序专属路径筛选(ReplaceVars(Var_Read("","","常用路径" A_Index,软件安装路径 "\个人配置.ini","是")))
+                常用路径%A_Index%:= 程序专属路径筛选(ReplaceVars(Var_Read("","","常用路径" A_Index,软件安装路径 "\个人配置.ini","是")), 参数2)
                 if (替换双斜杠单反斜杠双引号="开启")
                     常用路径%A_Index%:=RegExReplace(StrReplace(常用路径%A_Index%, """", ""), "\\\\|/", "\")
             }Else{
@@ -180,6 +184,7 @@ if (参数1="-跳转事件"){
 
     if FileExist(软件安装路径 "\个人配置.ini"){
         跳转方式:=Var_Read("跳转方式","1","基础配置",软件安装路径 "\个人配置.ini","是")
+        不存在时新建:=Var_Read("不存在时新建","关闭","基础配置",软件安装路径 "\个人配置.ini","是")
     }
     另存为窗口id值:= 参数2
     跳转目标路径:= 参数3
@@ -317,6 +322,9 @@ Return
 
     ControlFocus,Edit1,%窗口标题名称% ahk_class AutoHotkeyGUI
     OnMessage(0x0101, "searchbox")
+
+    if (悬停提示状态="1")
+        OnMessage(0x200, "WM_MOUSEMOVE")
 Return
 
 ;[跟随当前窗口]-------------------------------------
@@ -443,11 +451,14 @@ Return
 文本框选择后执行的操作:
     ;MsgBox, %A_GuiEvent%
     if (A_GuiEvent = "DoubleClick"){
+        ToolTip
         Gosub, 打开跳转事件
     }
     if (A_GuiEvent = "Normal"){
-        if (单击运行跳转="开启" and 参数3 !="全局版")
+        if (单击运行跳转="开启" and 参数3 !="全局版"){
+            ToolTip
             Gosub, 打开跳转事件
+        }
     }
 
     /*
@@ -476,7 +487,7 @@ Return
 
 打开:
     ;文本框选择值1:=获取选中项的值(A_EventInfo)
-    Run, % 文本框选择值1
+    runtry(文本框选择值1, 不存在时新建)
 Return
 
 打开所在路径:
@@ -486,7 +497,7 @@ Return
         if not InStr(FileExist(文本框选择值1), "D")
             SplitPath, 文本框选择值1, , 文本框选择值1
     }
-    Run, % 文本框选择值1
+    runtry(文本框选择值1, 不存在时新建)
 Return
 添加到常用:
     自定义常用路径2:=Var_Read("","","常用路径",软件安装路径 "\个人配置.ini","是")
@@ -594,7 +605,7 @@ return
     if (参数3="全局版"){ ;如果是全局版
         ;MsgBox, %全局性菜单项功能%
         if (全局性菜单项功能="直接打开"){
-            Run, % 文本框选择值1
+            runtry(文本框选择值1, 不存在时新建)
         }Else{
             Clipboard:=文本框选择值1
             ttip("已复制: "文本框选择值1,3000)
@@ -613,7 +624,12 @@ Return
 读取配置跳转方式:
 
     if not FileExist(跳转目标路径){
-        ttip("网络路径 或 路径不存在: "跳转目标路径,3000)
+        if (不存在时新建="开启"){
+            FileCreateDir, %跳转目标路径%
+            Sleep, 50
+        }
+        if not FileExist(跳转目标路径)
+            ttip("网络路径 或 路径不存在: "跳转目标路径,3000)
         ;MsgBox, 1
         ;Return
     }Else{
@@ -651,7 +667,7 @@ Return
     ;else if (跳转方式="6")
     ;跳转方式3(另存为窗口id值, 跳转目标路径)
     Else{   ;智能跳转方式
-        ;if (InStr(CtlList, "DirectUIHWND2") ){   ;如果是新式对话框
+        ;if (InStr(CtlList, "DirectUIHWND2") ){   
         $DialogType := SmellsLikeAFileDialog(另存为窗口id值)
         If $DialogType{    ;如果是新式对话框
             FeedDialog%$DialogType%(另存为窗口id值, 跳转目标路径)
@@ -881,7 +897,8 @@ return
     自定义常用路径2:=Var_Read("","","常用路径",软件安装路径 "\个人配置.ini","是")
 
     自定义常用路径:=ReplaceVars(自定义常用路径2)
-    自定义常用路径:=程序专属路径筛选(自定义常用路径)
+    自定义常用路径:=程序专属路径筛选(自定义常用路径, 参数2)
+
     if (替换双斜杠单反斜杠双引号="开启"){
         自定义常用路径:=RegExReplace(StrReplace(自定义常用路径, """", ""), "\\\\|/", "\")
     }
@@ -1034,7 +1051,7 @@ PerformSearch(value, LastText)
             value2 := StrReplace(value2, "`n", "|")
             Text := trim(value2 "|" Text, "|")
         }
-        
+
         if (Text !=Text2)
             更新ListView内容(Text)
         Text2:=Text
@@ -1384,3 +1401,66 @@ SetColumnWidthWithLimit(col, maxWidth)
     }
     Return Trim(RowText,"`n")
 }
+
+; --- 悬停提示消息处理函数 ---
+WM_MOUSEMOVE(wParam, lParam, msg, hwnd){
+    static PrevRow := -1
+    global TargetRow, TargetHwnd
+
+    ; 确保我们在正确的 ListView 上
+    GuiControlGet, ControlName, Name, %hwnd%
+    MouseGetPos, , , 获取id, 获取control
+    ;MsgBox, %获取control%`n%Gui_winID%`n%获取id%
+    if (ControlName != "文本框选择值1") or (获取id != Gui_winID)  or (获取control != "SysListView321"){
+        ToolTip
+        PrevRow := -1
+        return
+    }
+
+    ; 获取当前鼠标下的行号
+    VarSetCapacity(LVHITTESTINFO, 24, 0)
+    NumPut(lParam & 0xFFFF, LVHITTESTINFO, 0, "Int")
+    NumPut(lParam >> 16, LVHITTESTINFO, 4, "Int")
+    SendMessage, 0x1039, 0, &LVHITTESTINFO, , ahk_id %hwnd% ; LVM_SUBITEMHITTEST
+    Row := NumGet(LVHITTESTINFO, 12, "Int") + 1
+
+    ; 如果行号发生变化
+    if (Row != PrevRow) {
+        ; 1. 立即关闭之前的计时器和 ToolTip
+        SetTimer, DisplayToolTip, Off
+        ToolTip
+
+        ; 2. 如果移动到的是有效行，则开启新计时器
+        if (Row > 0) {
+            TargetRow := Row
+            TargetHwnd := hwnd
+            ; 设置延迟时间（单位：毫秒），-500 表示 500ms 后只运行一次
+            SetTimer, DisplayToolTip, -%延迟悬停显示%
+        }
+
+        PrevRow := Row
+    }
+}
+
+; --- 实际显示 ToolTip 的标签 ---
+DisplayToolTip:
+    ; 确保我们在正确的 ListView 上
+    GuiControlGet, ControlName, Name, %TargetHwnd%
+    MouseGetPos, , , 获取id, 获取control
+    ;MsgBox, %获取control%`n%Gui_winID%`n%获取id%
+    if (ControlName != "文本框选择值1") or (获取id != Gui_winID)  or (获取control != "SysListView321")
+        return
+
+    ; 获取内容并显示
+    LV_GetText(Col1, TargetRow, 1)
+    LV_GetText(Col2, TargetRow, 2)
+
+    FileGetTime, OutputVar, %Col2%
+    If (OutputVar)
+    FormatTime, OutTime, % OutputVar, yyyy/MM/dd HH:mm:ss
+    Else
+        OutTime:="not found"
+
+    ToolTip, % "名称: " Col1 "`n路径: " Col2 "`n修改时间: " OutTime
+return
+

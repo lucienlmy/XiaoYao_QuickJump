@@ -4,7 +4,7 @@
 #Include %A_ScriptDir%\公用函数.ahk
 
 FileAppend,%A_ScriptHwnd%`n,%A_Temp%\后台隐藏运行脚本记录.txt
-窗口标题名:="XiaoYao_快速跳转v4.5.2.2"
+窗口标题名:="XiaoYao_快速跳转v4.5.3"
 SplitPath, A_ScriptDir,, 软件配置路径
 ;软件配置路径:="D:\RunAny\PortableSoft\XiaoYao_快速跳转\XiaoYao_快速跳转"
 
@@ -113,6 +113,10 @@ Return
         返回的最多结果次数:=Var_Read("返回的最多结果次数","150","基础配置",软件配置路径 "\个人配置.ini","是")
         启用ev进行搜索:=Var_Read("启用ev进行搜索","开启","基础配置",软件配置路径 "\个人配置.ini","是")
         搜索延迟:=Var_Read("搜索延迟","50","基础配置",软件配置路径 "\个人配置.ini","是")
+
+        悬停提示状态:=Var_Read("悬停提示状态","1","基础配置",软件配置路径 "\个人配置.ini","是")
+        延迟悬停显示:=Var_Read("延迟悬停显示","300","基础配置",软件配置路径 "\个人配置.ini","是")
+        不存在时新建:=Var_Read("不存在时新建","关闭","基础配置",软件配置路径 "\个人配置.ini","是")
     }
 Return
 
@@ -161,6 +165,7 @@ Return
     深浅主题切换1 := 深浅主题切换1="跟随系统"?0:深浅主题切换1="浅色"?1:深浅主题切换1="深色"?2:1
 
     单击运行跳转:= 单击运行跳转="关闭"?0:1
+    不存在时新建:= 不存在时新建="关闭"?0:1
 
     IniRead, 自定义常用路径2, %软件配置路径%\个人配置.ini,常用路径
     常用路径1:=自定义常用路径2
@@ -437,6 +442,15 @@ Return
     Gui, 55:Add, DropDownList, x+5 yp-2 w86 v单击运行跳转, %OnOffState%
     GuiControl, Choose, 单击运行跳转, % 单击运行跳转+1
 
+    Gui, 55:Add, CheckBox,Checked%悬停提示状态% xm+%left_margin% yp+35 v悬停提示状态, 悬停提示[延迟]:
+    Gui, 55:Add, Edit, x+1 yp-4 w52 v延迟悬停显示, %延迟悬停显示%
+    Gui, 55:Add, Text, x+5 yp+4, 毫秒
+
+    Gui, 55:Add, Text, x+48 yp+2, 不存在时新建:
+    Gui, 55:Add, DropDownList, x+5 yp-2 w86 v不存在时新建, %OnOffState%
+    GuiControl, Choose, 不存在时新建, % 不存在时新建+1
+
+
     Gui, 55:Add, Button, Default w75 x95 y600 G设置ok, 确定
     Gui, 55:Add, Button, w75 x+20 yp G取消ok, 取消
     Gui, 55:Add, Button, w75 x+20 yp G重置ok, 恢复默认
@@ -556,6 +570,10 @@ Return
     IniWrite, %返回的最多结果次数%, %软件配置路径%\个人配置.ini,基础配置,返回的最多结果次数
     IniWrite, %启用ev进行搜索%, %软件配置路径%\个人配置.ini,基础配置,启用ev进行搜索
     IniWrite, %搜索延迟%, %软件配置路径%\个人配置.ini,基础配置,搜索延迟
+
+    IniWrite, %悬停提示状态%, %软件配置路径%\个人配置.ini,基础配置,悬停提示状态
+    IniWrite, %延迟悬停显示%, %软件配置路径%\个人配置.ini,基础配置,延迟悬停显示
+    IniWrite, %不存在时新建%, %软件配置路径%\个人配置.ini,基础配置,不存在时新建
 
     gosub, Menu_Reload
 Return

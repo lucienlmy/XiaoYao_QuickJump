@@ -874,7 +874,7 @@ Single(flag) { ;,返回1为重复,返回0为第一个运行
 跳转方式4(DialogHwnd,SelectedPath,是否按下确定 :="否") {
     hctl:=""
     ;ControlGet, hctl, Hwnd,, SysTreeView321, % "ahk_id" DialogHwnd
-    for _, ctrl in ["SysTreeView321", "TsShellTreeView1", "TUiDirectoryTreeView1", "TFolderTreeView1"]
+    for _, ctrl in ["SysTreeView321", "TsShellTreeView1", "TUiDirectoryTreeView1", "TFolderTreeView1", "TJamShellTree.UnicodeClass1"]
         ControlGet, hctl, Hwnd,, % ctrl, % "ahk_id" DialogHwnd
     until hctl
 
@@ -882,7 +882,7 @@ Single(flag) { ;,返回1为重复,返回0为第一个运行
         WinGet CtlList, ControlList, % "ahk_id" DialogHwnd
         Loop, Parse, CtlList, `n
         {
-            if InStr(A_LoopField, "TreeView"){
+            if InStr(A_LoopField, "Tree"){
                 ControlGet, hctl, Hwnd,, % A_LoopField, % "ahk_id" DialogHwnd
                 break
             }
@@ -2001,14 +2001,15 @@ FilterExistingPaths(paths) {
     return Trim(existingPaths, "`n")  ; 移除末尾多余的换行符
 }
 
-程序专属路径筛选(str){
+程序专属路径筛选(str, 指定窗口id:=""){
     str2:=""
     Loop, Parse, str, `n, `r
     {
         if not (RegExMatch(A_LoopField, "^\s*$")){  ; 跳过空行
             if RegExMatch(A_LoopField, "=") {   ; 包含等号的行
                 StringSplit, parts, A_LoopField, =
-                if WinActive(parts1){
+                返回指定窗口id := WinExist(parts1)
+                if (返回指定窗口id = 指定窗口id) {
                     str2 .= parts2 . "`n"
                 }
                 continue
@@ -2109,3 +2110,18 @@ GetWindowRect(hwnd, ByRef x, ByRef y) {
     y := NumGet(rect, 4, "int")
 }
 ;获取窗口大小函数--------------------------------------
+
+;守护一个或多个语句不受 Throw 语句抛出的运行时错误和异常的影响.
+runtry(str,是否新建:="关闭"){
+    if not FileExist(str){
+        if (是否新建="开启"){
+            FileCreateDir, %str%
+            Sleep, 50
+        }
+    }
+    try{
+        Run, % str
+    } catch {
+        ttip("无法打开该路径: " str,3000)
+    }
+}

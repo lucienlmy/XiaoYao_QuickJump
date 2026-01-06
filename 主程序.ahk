@@ -11,7 +11,7 @@ SendMode Input
 SetWorkingDir %A_ScriptDir%
 SetBatchLines -1
 
-软件版本号:="4.5.2.2"
+软件版本号:="4.5.3"
 
 ;如果配置不存在，新建一个默认配置
 if not FileExist(A_ScriptDir "\个人配置.ini")
@@ -130,6 +130,7 @@ Loop, Parse, 屏蔽xiaoyao程序列表, `,
 手动弹出计数:=Var_Read("手动弹出计数","0","基础配置",A_ScriptDir "\个人配置.ini","是")
 自动弹出菜单计数:=Var_Read("自动弹出菜单计数","0","基础配置",A_ScriptDir "\个人配置.ini","是")
 给dc发送热键:=Var_Read("给dc发送热键","^+{F12}","基础配置",A_ScriptDir "\个人配置.ini","是")
+global 不存在时新建:=Var_Read("不存在时新建","关闭","基础配置",A_ScriptDir "\个人配置.ini","是")
 
 loop 5
 {
@@ -370,7 +371,7 @@ ShowMenu:
         }
     }
     ; ------------------ 常用路径 ------------------
-    自定义常用路径:=程序专属路径筛选(自定义常用路径2)
+    自定义常用路径:=程序专属路径筛选(自定义常用路径2,$WinID)
     if (深浅主题切换="浅色" or (深浅主题切换="跟随系统" and not IsDarkMode()))
         Menu ContextMenu, Add
     Menu ContextMenu, Add, < 常用路径 >, Choice
@@ -406,7 +407,7 @@ ShowMenu:
 
     Loop, 5
     {
-        常用路径%A_Index%:= 程序专属路径筛选(常用路径%A_Index%)
+        常用路径%A_Index%:= 程序专属路径筛选(常用路径%A_Index%, $WinID)
         if (常用路径开关%A_Index%="1" and 常用路径%A_Index%!="" and 常用路径名称%A_Index%!=""){
             常用路径名称:= 常用路径名称%A_Index%
             更多常用路径:="更多常用路径" A_Index
@@ -582,14 +583,14 @@ Choice:
     }
 
     if GetKeyState("ctrl"){     ; 判断是否按下 ctrl 键
-        Run, % $FolderPath
+        runtry($FolderPath,不存在时新建)
         Return
     }
 
     if (全局性菜单="开启"){
         ;MsgBox, %全局性菜单项功能%
         if (全局性菜单项功能="直接打开"){
-            Run, % $FolderPath
+            runtry($FolderPath,不存在时新建)
         }Else{
             Clipboard:=$FolderPath
             ttip("已复制: "Clipboard,2000)
@@ -681,7 +682,7 @@ ExitApp
 return
 
 打开软件安装目录:
-    Run, %A_ScriptDir%
+    runtry(A_ScriptDir)
 return
 
 ;字符坐标替换------------------------------------------------------------------------------
