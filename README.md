@@ -66,6 +66,12 @@
 		2.命令选择 cm_ExecuteScript，参数填写 get_tabs.lua 的完整路径（例如 D:\XiaoYao_快速跳转\辅助\get_tabs.lua），热键可设置为 Ctrl+Shift+F12
 		3.在【配置】-【选项】-【杂项】中，勾选“在主窗口标题栏中显示当前目录”
 
+**关于调用everything**：
+支持ev1.4和ev1.5。只需ev在后台运行即可。
+ev1.5需要特殊设置，在“高级”中把“alpha_instance”设为“false”，XiaoYao就能“正确”识别到
+<img width="760" height="659" alt="image" src="https://github.com/user-attachments/assets/d9097971-2a4c-498c-82d1-000d9a4c13d2" />
+
+
 # 致谢 (灵感与参考)：
 
 本工具的开发借鉴或使用了以下优秀项目的思路和代码，在此深表感谢：
