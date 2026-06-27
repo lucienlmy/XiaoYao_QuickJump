@@ -72,6 +72,9 @@
 ev1.5需要特殊设置，在“高级”中把“alpha_instance”设为“false”，XiaoYao就能“正确”识别到
 <img width="760" height="659" alt="image" src="https://github.com/user-attachments/assets/d9097971-2a4c-498c-82d1-000d9a4c13d2" />
 
+**UTF-8的相关说明**：
+
+在切换系统编码为UTF8前，应先退出本程序，同时将原配置文件另存为UTF16 LE编码并保存，重启电脑后即可正常使用。
 
 # 致谢 (灵感与参考)：
 
