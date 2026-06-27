@@ -69,7 +69,7 @@
 **关于调用everything**：
 
 支持ev1.4和ev1.5。只需ev在后台运行即可。
-ev1.5需要特殊设置，在“高级”中把“alpha_instance”设为“false”，XiaoYao就能“正确”识别到
+ev1.5a需要特殊设置，在“高级”中把“alpha_instance”设为“false”，XiaoYao就能“正确”识别到
 <img width="760" height="659" alt="image" src="https://github.com/user-attachments/assets/d9097971-2a4c-498c-82d1-000d9a4c13d2" />
 
 **UTF-8的相关说明**：
