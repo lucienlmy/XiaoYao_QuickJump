@@ -483,9 +483,9 @@ DirectoryOpusgetinfo(mode := 0){
 
         if FileExist(A_Temp "\pathlist.txt"){   ;如果生成了文件
             FileRead, doinfo信息列表, %A_Temp%\pathlist.txt
-            
+
             正则:="<path(.*?)>([^<]+)<\/path>"
-            
+
             active1 := ""
             active2 := ""
             otherTabs := ""
@@ -495,21 +495,21 @@ DirectoryOpusgetinfo(mode := 0){
                 if (RegExMatch(A_LoopField, 正则, 匹配)){
                     标签属性 := 匹配1
                     do标签路径1 := 匹配2
-                    
+
                     if not FileExist(do标签路径1)
                         do标签路径1:=StrReplace(do标签路径1, "&amp;", "&")
                     do标签路径1:=RTrim(do标签路径1,"\")
-                    
-                    if InStr(标签属性, "active_tab=""1""") {
+
+                    if InStr(标签属性, "tab_state=""1""") {
                         active1 := do标签路径1 "`n"
-                    } else if InStr(标签属性, "active_tab=""2""") {
+                    } else if InStr(标签属性, "tab_state=""2""") {
                         active2 := do标签路径1 "`n"
                     } else {
                         otherTabs .= do标签路径1 "`n"
                     }
                 }
             }
-            
+
             ; 根据 mode 参数决定拼接和返回的内容
             if (mode == 1) {
                 do所以标签路径 := active1
@@ -518,12 +518,12 @@ DirectoryOpusgetinfo(mode := 0){
             } else {
                 do所以标签路径 := active1 . active2 . otherTabs
             }
-            
+
         }Else{
             ; 备用获取方式 (如果生成XML失败)
             do所以标签路径:= DirectoryOpus_控件()
         }
-        
+
         ; 去除首尾多余的换行符，防止只有1行时末尾带空行
         do所以标签路径:= Trim(do所以标签路径,"`n")
     }
@@ -714,6 +714,48 @@ TotalCommander_path(指定栏:="1"){
     SetTitleMatchMode 1
     DetectHiddenWindows, off
     Return trim(tc路径, "`n")
+}
+
+; 获取按照Z序（最近激活）排列的第一个有效文件管理器的当前路径
+获取最近文件管理器路径(dc热键:="^+{F12}") {
+    TargetFolderPath := ""
+    WinGet, allWindows, List
+    Loop, %allWindows%
+    {
+        currHwnd := allWindows%A_Index%
+        WinGetClass, currClass, ahk_id %currHwnd%
+        WinGet, currExe, ProcessName, ahk_id %currHwnd%
+
+        Firstpath := ""
+        if (currExe = "explorer.exe" && currClass = "CabinetWClass")
+            Firstpath := Explorer_Path()
+        else if (currExe = "dopus.exe")
+            Firstpath := DirectoryOpusgetinfo(1)
+        else if (RegExMatch(currExe, "i)totalcmd.*\.exe") && currClass = "TTOTAL_CMD")
+            Firstpath := TotalCommander_path()
+        else if (currExe = "XYplorer.exe" && currClass = "ThunderRT6FormDC")
+            Firstpath := XYplorer_Path("1")
+        else if (currExe = "doublecmd.exe" && currClass = "TTOTAL_CMD")
+            Firstpath := DoubleCommander_path(dc热键)
+        else if (RegExMatch(currExe, "i)Q-Dir.*\.exe") && RegExMatch(currClass, "i)^ATL:"))
+            Firstpath := Q_Dir_Path()
+        else
+            continue ; 跳过非文件管理器窗口
+
+        ; 解析提取到的路径
+        Loop, parse, Firstpath, `n, `r
+        {
+            if !(RegExMatch(A_LoopField, "^\s*$")){
+                TargetFolderPath := RTrim( RegExReplace(A_LoopField, "^\((.*?)\)"),"\")
+                Break
+            }
+        }
+
+        ; 提取成功则直接结束循环
+        if (TargetFolderPath != "")
+            Break
+    }
+    return TargetFolderPath
 }
 
 ;-----------历史打开路径------------------------------------------------

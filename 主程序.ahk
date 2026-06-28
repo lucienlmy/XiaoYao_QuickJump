@@ -11,7 +11,7 @@ SendMode Input
 SetWorkingDir %A_ScriptDir%
 SetBatchLines -1
 
-软件版本号:="4.5.8"
+软件版本号:="4.6.0"
 
 ;如果配置不存在，新建一个默认配置
 if not FileExist(A_ScriptDir "\个人配置.ini")
@@ -96,6 +96,7 @@ if (DO的收藏夹="开启")
 屏蔽xiaoyao程序列表:=Var_Read("屏蔽xiaoyao程序列表","War3.exe,dota2.exe,League of Legends.exe","基础配置",A_ScriptDir "\个人配置.ini","是")
 深浅主题切换:=Var_Read("深浅主题切换","跟随系统","基础配置",A_ScriptDir "\个人配置.ini","是")
 global 只显示文件夹名:=Var_Read("只显示文件夹名","关闭","基础配置",A_ScriptDir "\个人配置.ini","是") ; 【新增配置项】
+global 显示此电脑子菜单:=Var_Read("显示此电脑子菜单","开启","基础配置",A_ScriptDir "\个人配置.ini","是")
 
 默认常驻窗口窗口列表:="
 (
@@ -397,7 +398,51 @@ ShowMenu:
                 Menu ContextMenu, Icon,%常用路径名称%, shell32.dll, 44
         }
     }
+    ; ------------------ 此电脑子菜单 ------------------
+    if (显示此电脑子菜单 = "开启") {
+        ; 1. 获取并添加所有磁盘盘符
+        DriveGet, driveList, List
+        Loop, Parse, driveList
+        {
+            DrivePath := A_LoopField ":\"
+            DispName := FormatMenuName(DrivePath)
+            Menu, 此电脑子菜单, Add, %DispName%, Choice
+            if (是否加载图标 !="关闭")
+                Menu, 此电脑子菜单, Icon, %DispName%, shell32.dll, 9
+        }
 
+        Menu, 此电脑子菜单, Add ; 分隔线
+
+        ; 2. 添加常用的系统级路径
+        EnvGet, UserProfile, USERPROFILE
+        ; 数据格式：绝对路径 | 菜单显示名称 | 图标所在DLL | 图标索引号
+        SysPaths := A_Desktop "|桌面|shell32.dll|35`n" A_AppData "\Microsoft\Windows\Recent|最近|imageres.dll|113`n" A_MyDocuments "|文档|imageres.dll|112`n" UserProfile "\Pictures|图片|imageres.dll|117`n" UserProfile "\Music|音乐|imageres.dll|108`n" UserProfile "\Videos|视频|imageres.dll|189`n" UserProfile "\Downloads|下载|imageres.dll|184"
+
+        Loop, Parse, SysPaths, `n
+        {
+            if (A_LoopField = "")
+                Continue
+            pArr := StrSplit(A_LoopField, "|")
+            SysPath := pArr[1]
+            SysName := pArr[2]
+            IconDll := pArr[3]
+            IconNum := pArr[4]
+
+            ; 强制加入字典，确保不管“精简文件夹名”是否开启，系统路径都能被正确识别
+            MenuDisplayMap[SysPath] := SysName
+            RealPathMap[SysName] := SysPath
+
+            Menu, 此电脑子菜单, Add, %SysName%, Choice
+            if (是否加载图标 !="关闭")
+                Menu, 此电脑子菜单, Icon, %SysName%, %IconDll%, %IconNum%
+        }
+
+        ; 3. 挂载到主菜单
+        Menu ContextMenu, Add, (&P)此电脑, :此电脑子菜单
+        if (是否加载图标 !="关闭")
+            Menu ContextMenu, Icon, (&P)此电脑, shell32.dll, 16
+    }
+    ; ---------------------------------------------------
     ;------------------ 历史打开 ------------------
     if (深浅主题切换="浅色" or (深浅主题切换="跟随系统" and not IsDarkMode()))
         Menu ContextMenu, Add
@@ -450,12 +495,12 @@ ShowMenu:
     ; ------------------ 设置 ------------------
     Gosub, 读取默认路径配置
 
-    if (自动跳转到默认路径="关闭")
-        Menu, 更多设置项, Add, 开启 自动跳默认路径, 开启自动跳默认路径
-    if (自动跳转到默认路径="开启"){
-        Menu, 更多设置项, Add, 自动跳默认路径, 关闭自动跳默认路径
-        Menu, 更多设置项, Icon, 自动跳默认路径, shell32.dll, 145
-    }
+    ;if (自动跳转到默认路径="关闭")
+    ;Menu, 更多设置项, Add, 开启 自动跳默认路径, 开启自动跳默认路径
+    ;if (自动跳转到默认路径="开启"){
+    ;Menu, 更多设置项, Add, 自动跳默认路径, 关闭自动跳默认路径
+    ;Menu, 更多设置项, Icon, 自动跳默认路径, shell32.dll, 145
+    ;}
 
     if (历史路径设为默认路径="关闭"){
         Menu, 更多设置项, Add, 开启 历史路径设为默认, 开启历史路径设为默认
@@ -524,6 +569,8 @@ ShowMenu:
 
     Menu ContextMenu, Delete
     Menu 历史打开1, Delete
+    if (显示此电脑子菜单="开启")
+        Menu 此电脑子菜单, Delete
     if (DO的收藏夹="开启")
         Menu do收藏夹, Delete
     Menu 更多设置项, Delete
@@ -550,7 +597,7 @@ Choice:
 
     ; 【新增】如果开启了精简显示，将短名称还原回真实的绝对路径
     global 只显示文件夹名, RealPathMap
-    if (只显示文件夹名 = "开启" && RealPathMap.HasKey($FolderPath)){
+    if (RealPathMap.HasKey($FolderPath)){
         $FolderPath := RealPathMap[$FolderPath]
     }
 
@@ -589,15 +636,8 @@ return
 一键跳转路径:
     Gosub,手动弹出计数
     $WinID := WinExist("A")
-    Firstpath:=Trim(Explorer_Path() "`n" DirectoryOpusgetinfo(0) "`n" TotalCommander_path() "`n" XYplorer_Path("1") "`n" DoubleCommander_path(给dc发送热键),"`n")
-    $FolderPath=""
-    Loop, parse, Firstpath, `n, `r
-    {
-        if !(RegExMatch(A_LoopField, "^\s*$")){
-            $FolderPath:=RTrim( RegExReplace(A_LoopField, "^\((.*?)\)"),"\")
-            Break
-        }
-    }
+    $FolderPath := 获取最近文件管理器路径(给dc发送热键)
+
     if ($FolderPath="")
         return
     if  FileExist($FolderPath){
@@ -697,6 +737,19 @@ return
 return
 
 检查窗口列表:
+    ; === 新增：记录焦点切换轨迹，拦截从常驻窗口切回时的重复弹窗 ===
+    WinGet, 当前焦点ID, ID, A
+    if (当前焦点ID != "" && 当前焦点ID != 全局_上次焦点ID) {
+        全局_上上次焦点ID := 全局_上次焦点ID
+        全局_上次焦点ID := 当前焦点ID
+    }
+
+    ; 判断焦点是否刚刚从常驻跟随窗口转移过来
+    WinGetClass, 来源类名, ahk_id %全局_上上次焦点ID%
+    WinGetTitle, 来源标题, ahk_id %全局_上上次焦点ID%
+    是否从常驻窗口切回 := (来源类名 = "AutoHotkeyGUI" && InStr(来源标题, "常用路径跳转")) ? 1 : 0
+    ; ==============================================================
+
     for index, winTitle2 in windows2
     {
         if WinActive(winTitle2)
@@ -712,15 +765,7 @@ return
 
                 If (自动跳转到文件管理器路径 = "开启"){
                     WinID2 := WinExist(winTitle)
-                    Firstpath22:=Trim(Explorer_Path() "`n" DirectoryOpusgetinfo(1) "`n" TotalCommander_path() "`n" XYplorer_Path("1") "`n" DoubleCommander_path(给dc发送热键),"`n")
-                    FolderPath222 :=""
-                    Loop, parse, Firstpath22, `n, `r
-                    {
-                        if !(RegExMatch(A_LoopField, "^\s*$")){
-                            FolderPath222:=RTrim( RegExReplace(A_LoopField, "^\((.*?)\)"),"\")
-                            Break
-                        }
-                    }
+                    FolderPath222 := 获取最近文件管理器路径(给dc发送热键)
 
                     if (FolderPath222 !=""){
                         Sleep, 100
@@ -733,7 +778,8 @@ return
                     }
                 }
 
-                if (自动弹出菜单="开启"){
+                ; 【修改此行】加入拦截判断，确保不是从 GUI 切回来的
+                if (自动弹出菜单="开启" && 是否从常驻窗口切回=0){
                     If (自动跳转到文件管理器路径 = "开启")
                         Sleep, 200
                     WinID2 := WinExist(winTitle)
@@ -760,15 +806,7 @@ return
 
             If (自动跳转到文件管理器路径 = "开启"){
                 WinID2 := WinExist("ahk_class #32770")
-                Firstpath22:=Trim(Explorer_Path() "`n" DirectoryOpusgetinfo(1) "`n" TotalCommander_path() "`n" XYplorer_Path("1") "`n" DoubleCommander_path(给dc发送热键),"`n")
-                FolderPath222 :=""
-                Loop, parse, Firstpath22, `n, `r
-                {
-                    if !(RegExMatch(A_LoopField, "^\s*$")){
-                        FolderPath222:=RTrim( RegExReplace(A_LoopField, "^\((.*?)\)"),"\")
-                        Break
-                    }
-                }
+                FolderPath222 := 获取最近文件管理器路径(给dc发送热键)
 
                 if (FolderPath222 !=""){
                     Sleep, 100
@@ -781,7 +819,8 @@ return
                 }
             }
 
-            if (自动弹出菜单="开启"){
+            ; 【修改此行】同样加入拦截判断
+            if (自动弹出菜单="开启" && 是否从常驻窗口切回=0){
                 If (自动跳转到文件管理器路径 = "开启")
                     Sleep, 200
                 WinID2 := WinExist("ahk_class #32770")

@@ -4,7 +4,7 @@
 #Include %A_ScriptDir%\公用函数.ahk
 
 FileAppend,%A_ScriptHwnd%`n,%A_Temp%\后台隐藏运行脚本记录.txt
-窗口标题名:="XiaoYao_快速跳转v4.5.8"
+窗口标题名:="XiaoYao_快速跳转v4.6.0"
 SplitPath, A_ScriptDir,, 软件配置路径
 ;软件配置路径:="D:\RunAny\PortableSoft\XiaoYao_快速跳转\XiaoYao_快速跳转"
 
@@ -70,9 +70,12 @@ Return
         常用路径最多显示数量:=Var_Read("常用路径最多显示数量","9","基础配置",软件配置路径 "\个人配置.ini","是")
         自动跳转到文件管理器路径:=Var_Read("自动跳转到文件管理器路径","关闭","基础配置",软件配置路径 "\个人配置.ini","是")
         隐藏标题栏:=Var_Read("隐藏标题栏","关闭","基础配置",软件配置路径 "\个人配置.ini","否")
-        
+
         ; 【新增读取】只显示文件夹名配置
         只显示文件夹名:=Var_Read("只显示文件夹名","关闭","基础配置",软件配置路径 "\个人配置.ini","是")
+
+        ; 【新增读取】显示此电脑子菜单配置
+        显示此电脑子菜单:=Var_Read("显示此电脑子菜单","开启","基础配置",软件配置路径 "\个人配置.ini","是")
 
         默认常驻窗口窗口列表:="
 (
@@ -132,9 +135,12 @@ Return
 
     自动弹出:=自动弹出菜单
     自动弹出:= 自动弹出="关闭"?0:1
-    
+
     ; 【新增初始化转换】
     只显示文件夹名:= 只显示文件夹名="关闭"?0:1
+
+    ; 【新增显示此电脑子菜单初始化转换】
+    显示此电脑子菜单:= 显示此电脑子菜单="关闭"?0:1
 
     ;自动弹出常驻窗口:=自动弹出常驻窗口
     自动弹出常驻窗口:= 自动弹出常驻窗口="关闭"?0:1
@@ -242,7 +248,7 @@ Return
     Gui, 55:Add, Text, xm+%left_margin% yp+40, 自动弹出菜单
     Gui, 55:Add, DropDownList, x+5 yp-2 w%text_width% v自动弹出, %OnOffState%
     GuiControl, Choose, 自动弹出, % 自动弹出+1
-    
+
     ; 【新增排版】放置在自动弹出菜单的右侧
     Gui, 55:Add, Text, x+10 yp+2, 只显示文件夹名
     Gui, 55:Add, DropDownList, x+5 yp-2 w%text_width% v只显示文件夹名, %OnOffState%
@@ -251,6 +257,11 @@ Return
     Gui, 55:Add, Text, xm+%left_margin% yp+40, 是否加载图标
     Gui, 55:Add, DropDownList, x+5 yp-2 w%text_width% v是否加载图标, %OnOffState%
     GuiControl, Choose, 是否加载图标,% 是否加载图标+1
+
+    ; 【新增排版】放置在是否加载图标的右侧
+    Gui, 55:Add, Text, x+10 yp+2, 显示此电脑菜单
+    Gui, 55:Add, DropDownList, x+5 yp-2 w%text_width% v显示此电脑子菜单, %OnOffState%
+    GuiControl, Choose, 显示此电脑子菜单, % 显示此电脑子菜单+1
 
     Gui, 55:Add, GroupBox, xm y+50 w%group_width_55% h190, 常用路径设置【支持ahk内置变量】
     Gui, 55:Add, Button, x295 yp-5 g添加子分类, 添加子分类
@@ -473,14 +484,13 @@ Return
     Gui, 55:Add, DropDownList, x+7 yp-2 w%text_width% v自动跳转到文件管理器路径, %OnOffState%
     GuiControl, Choose, 自动跳转到文件管理器路径, % 自动跳转到文件管理器路径+1
 
-
     Gui, 55:Add, Button, Default w75 x95 y620 G设置ok, 确定
     Gui, 55:Add, Button, w75 x+20 yp G取消ok, 取消
     Gui, 55:Add, Button, w75 x+20 yp G重置ok, 恢复默认
     Gui, 55:Add, Text, Cblue x+20 yp+5  G打开设置2, 配置文件
 
     Gui,55:Tab,关于,,Exact
-    Gui, 55:Add, Text, xm+%距离最左边的长度% ym+%距离最上边的长度% cblue, 作者：逍遥  https://github.com/lch319/XiaoYao_QuickJump
+    Gui, 55:Add, Text, xm+%距离最向左边的长度% ym+%距离最上边的长度% cblue, 作者：逍遥  https://github.com/lch319/XiaoYao_QuickJump
     Gui, 55:Add, Text, xm+%距离最左边的长度% yp+40 cblue, 在打开或保存对话框中，快速定位到当前打开的文件夹路径
     Gui, 55:Add, Text, xm+%距离最左边的长度% yp+25 cblue, 支持 DO、TC、DC、XY、Q-Dir、Win11资源管理器
     Gui, 55:Add, Text, xm+%距离最左边的长度% yp+40 cblue, QQ交流群:246308937(答案:RunAny)
@@ -551,9 +561,12 @@ Return
     IniWrite, %全局性菜单项功能%, %软件配置路径%\个人配置.ini,基础配置,全局性菜单项功能
     IniWrite, %初始文本框内容%, %软件配置路径%\个人配置.ini,基础配置,初始文本框内容
     IniWrite, %是否加载图标%, %软件配置路径%\个人配置.ini,基础配置,是否加载图标
-    
+
     ; 【新增保存】将只显示文件夹名的结果写入配置
     IniWrite, %只显示文件夹名%, %软件配置路径%\个人配置.ini,基础配置,只显示文件夹名
+
+    ; 【新增保存】将显示此电脑子菜单的结果写入配置
+    IniWrite, %显示此电脑子菜单%, %软件配置路径%\个人配置.ini,基础配置,显示此电脑子菜单
 
     IniWrite, %常用路径最多显示数量%, %软件配置路径%\个人配置.ini,基础配置,常用路径最多显示数量
 
@@ -622,7 +635,7 @@ return
     if FileExist(软件配置路径 "\个人配置.ini")
         run,%软件配置路径%\个人配置.ini
     Else
-        run,%软件配置路径%
+        run,%软件路径%
 return
 
 打开使用文档:
@@ -765,7 +778,7 @@ return
 return
 
 #If WinActive("ahk_id" Gui_winID)
-~Escape::
+    ~Escape::
     ExitApp
-return
+    return
 #If

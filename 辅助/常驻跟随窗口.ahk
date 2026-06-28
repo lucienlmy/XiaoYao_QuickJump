@@ -218,7 +218,7 @@ Return
 
     global Gui_winID
     ;Gui, +Resize +AlwaysOnTop +ToolWindow +HwndGui_winID
-    Gui, +Resize +ToolWindow +HwndGui_winID +AlwaysOnTop
+    Gui, +Resize +ToolWindow +HwndGui_winID
 
     if (隐藏标题栏 = "开启")
         Gui, -Caption
@@ -310,20 +310,6 @@ Return
 
     Gui, Show,NoActivate h%窗口初始高度% w%窗口初始宽度% X%窗口初始坐标x% Y%窗口初始坐标y%,%窗口标题名称%
 
-    ; === 设置所有者关系 ===
-    hParent := 参数2
-    Gui +Owner%hParent% -AlwaysOnTop  ; 关键：建立拥有关系，使 GUI 随父窗口隐藏/显示
-
-    ; === 添加消息监听，实现最小化同步和激活置顶 ===
-    ; 监听父窗口的 WM_SIZE 消息（窗口大小变化，包括最小化/还原）
-    OnMessage(0x0005, "OnParentSize")   ; WM_SIZE = 0x0005
-    ; 监听父窗口的 WM_ACTIVATE 消息（激活状态变化）
-    OnMessage(0x0006, "OnParentActivate") ; WM_ACTIVATE = 0x0006
-
-    ; 保存 GUI 句柄供回调使用
-    global hGui := Gui_winID
-    global hParent := hParent
-
     SetTimer, ExitScript, Off   ;关闭5秒后的退出操作
 
     If (参数3="自动弹出"){
@@ -349,7 +335,13 @@ Return
 ;[跟随当前窗口]-------------------------------------
 跟随当前窗口:
     global menu:= "searchbox"
-
+    global MinMax变量:="最小化"
+    global 是否是第一次激活切换:="是"
+    global 是否是第一次非激活切换:="是"
+    global 是否是第一次最大化切换:="是"
+    global 是否是第一次最小化切换:="是"
+    global 是否是第一次中化切换:="是"
+    global 是否是第一次置顶:="是"
     global Gs_tcWinID := 参数2  ; 获取当前活动窗口的ID
     global newX2:="",newY2:=""
     if (Gs_tcWinID=Gui_winID ) or (WinActive("ahk_class Progman")){
@@ -539,10 +531,10 @@ Return
     自动跳转到文件管理器路径:=Var_Read("自动跳转到文件管理器路径","关闭","基础配置",软件安装路径 "\个人配置.ini","是")
 
     ;if (自动跳转到文件管理器路径="关闭")
-        ;Menu, searchbox, Add, 开启 自动跳转到文件管理器路径, 开启自动跳转到文件管理器路径
+    ;Menu, searchbox, Add, 开启 自动跳转到文件管理器路径, 开启自动跳转到文件管理器路径
     ;if (自动跳转到文件管理器路径="开启"){
-        ;Menu, searchbox, Add, 自动跳转到文件管理器路径, 关闭自动跳转到文件管理器路径
-        ;Menu, searchbox, Icon, 自动跳转到文件管理器路径, shell32.dll, 145
+    ;Menu, searchbox, Add, 自动跳转到文件管理器路径, 关闭自动跳转到文件管理器路径
+    ;Menu, searchbox, Icon, 自动跳转到文件管理器路径, shell32.dll, 145
     ;}
 
     if (自动跳转到默认路径="关闭"){
@@ -582,14 +574,29 @@ Return
     */
     Menu, searchbox, Add
 
-    if (自动弹出常驻窗口="开启"){
+if (自动弹出常驻窗口="开启"){
         gosub,获取窗口信息
+        ; -----------------------------------------------------
+        ; 动态显示“允许”或“移除”菜单
+        ; -----------------------------------------------------
+        gosub,获取自动弹出窗口信息
+        if (!EntryExists_AutoPopup){
+            Menu, searchbox, Add, 添加当前窗口自动弹出, 允许当前窗口自动弹出
+        } Else {
+            Menu, searchbox, Add, 从自动弹出列表中移除, 从自动弹出列表中移除
+            ; 如果你希望移除菜单带个图标，可以保留下面这行（132 对应一个红叉图标）
+            Menu, searchbox, Icon, 从自动弹出列表中移除, shell32.dll, 132 
+        }
+        ; -----------------------------------------------------
+        Menu, searchbox, Add
         if (!EntryExists)
             Menu, searchbox, Add, 禁止当前窗口自动弹出, 禁止当前窗口自动弹出
         Else{
             Menu, searchbox, Add, 禁止当前窗口自动弹出, 禁止当前窗口自动弹出
             Menu, searchbox, Icon, 禁止当前窗口自动弹出, shell32.dll, 145
         }
+        
+
     }
     Menu, searchbox, Add, 在该程序中禁用xiaoyao, 在该程序中禁用xiaoyao
 
@@ -792,10 +799,21 @@ return
 #If
 
 ;[跟随父窗口移动]═════════════════════════════════════════════════
+;需要传递的全局变量
+;global menu:= "窗口menu名"
+;global MinMax变量:="最小化"
+;global 是否是第一次激活切换:="是"
+;global 是否是第一次非激活切换:="是"
+;global 是否是第一次最大化切换:="是"
+;global 是否是第一次最小化切换:="是"
+;global 是否是第一次中化切换:="是"
+;global 是否是第一次置顶:="是"
+;global Gs_tcWinID := Gs_tcWinID2  ; 父窗口ID
+;global newX2:="",newY2:=""
 
 FollowParentWindow:
     menu名:= menu
-    if !WinExist("ahk_id " Gs_tcWinID)  ; 如果父窗口已关闭
+    if !WinExist("ahk_id " Gs_tcWinID)  ; 如果父窗口已关闭 [cite: 64]
     {
         Gui,  Destroy
         SetTimer, FollowParentWindow, Off
@@ -803,13 +821,82 @@ FollowParentWindow:
         return
     }
 
+    ; 获取当前系统处于激活状态的窗口 ID
+    WinGet, Active_HWnd, ID, A
+    ; 获取当前系统处于激活状态的窗口 ID
+    WinGet, Active_HWnd, ID, A
+
+    ;判断窗口激活与未激活的切换..........................................
+    if (Active_HWnd = Gs_tcWinID) or (Active_HWnd = Gui_winID){
+        if (是否是第一次激活切换="是"){
+            是否是第一次激活切换:="否"
+            是否是第一次非激活切换:="是"
+            Gui,+AlwaysOnTop
+        }
+        WinGet, ExStyle, ExStyle, ahk_id %Gs_tcWinID% ;检查窗口是否已经置顶
+        if (ExStyle & 0x8)
+            Gui,+AlwaysOnTop
+    }Else{
+        if (是否是第一次非激活切换="是"){
+            是否是第一次激活切换:="是"
+            是否是第一次非激活切换:="否"
+            WinGet, ExStyle, ExStyle, ahk_id %Gs_tcWinID% ;检查窗口是否已经置顶
+            if (ExStyle & 0x8){ ;如果父窗口已经置顶
+                Gui,+AlwaysOnTop
+            }Else{
+                Gui,-AlwaysOnTop
+
+                ; 【修改点】：调用系统 API，把 GUI 精准排在当前活动窗口的后面
+                ; 0x13 是三个标志位的组合：SWP_NOSIZE (0x0001) | SWP_NOMOVE (0x0002) | SWP_NOACTIVATE (0x0010)
+                ; 这确保了窗口只会改变 Z 序，不会改变大小、位置，也不会抢占焦点
+                DllCall("user32\SetWindowPos", "Ptr", Gui_winID, "Ptr", Active_HWnd, "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)
+            }
+        }
+    }
+    ;.....................................................................
     WinGet, active_MinMax, MinMax, ahk_id %Gs_tcWinID%
     WinGetPos, newX, newY, newW, newH, ahk_id %Gs_tcWinID%
 
-    ; 获取窗口状态：-1=最小化, 0=正常, 1=最大化
-    WinGet, MinMax, MinMax, ahk_id %Gs_tcWinID%
-    if (MinMax != 0)   ; 最大化或最小化时不移动
-        return
+    ;判断最大化到最小化的切换..........................................
+
+    if (active_MinMax="-1"){
+        if (是否是第一次最小化切换="是"){
+            是否是第一次最大化切换:="是"
+            是否是第一次最小化切换:="否"
+            是否是第一次中化切换:="是"
+            ;WinGetPos, guiX3, guiY3, guiW3, guiH3, ahk_id %Gui_winID%
+            Gui,hide
+            ;print("最小化" guiX3 "`n" guiY3)
+        }
+        Return
+    }Else if (active_MinMax="1"){
+        if (是否是第一次最大化切换="是"){
+            是否是第一次最大化切换:="否"
+            是否是第一次最小化切换:="是"
+            是否是第一次中化切换:="是"
+            ;MsgBox, 2
+            Gui,Show,NoActivate
+            ;WinMove, ahk_id %Gui_winID%,, %guiX3%, %guiY3%
+            Gui,+AlwaysOnTop
+            ;WinActivate, ahk_id %Gs_tcWinID%
+            ;print("最大化" guiX3 "`n" guiY3)
+        } ;Else
+        ;Gui,+AlwaysOnTop
+        Return
+    }Else{
+        if (是否是第一次中化切换="是"){
+            是否是第一次最大化切换:="是"
+            是否是第一次最小化切换:="是"
+            是否是第一次中化切换:="否"
+            ;MsgBox, 2
+            Gui,Show,NoActivate
+            ;WinMove, ahk_id %Gui_winID%,, %guiX3%, %guiY3%
+            Gui,+AlwaysOnTop
+            ;WinActivate, ahk_id %Gs_tcWinID%
+            ;print("中化" guiX3 "`n" guiY3)
+        }
+    }
+
     ;..........................................
     if (newX = newX2 && newY = newY2)
         Return
@@ -1013,6 +1100,7 @@ PerformSearch(value, LastText)
                 Text .= (Text ? "|" ele : ele)
 
         DetectHiddenWindows, On
+        ; 取消了字符长度限制，只要启用了Everything并且进程存在，就直接搜索
         if (启用ev进行搜索 = "开启") and (WinExist("ahk_exe everything.exe") or WinExist("ahk_exe everything64.exe")) {
             value2 :=""
             value2 := everythingSearch(ev排除列表 " " value, 返回的最多结果次数)   ;调用everything进行搜索
@@ -1023,8 +1111,6 @@ PerformSearch(value, LastText)
         if (Text !=Text2)
             更新ListView内容(Text)
         Text2:=Text
-
-        ;GuiControl, , % 文本框ID, % "|" Text
     }
     Else If (!value)
         更新ListView内容(文本框内容写入)
@@ -1110,6 +1196,38 @@ Return
         run,"%软件安装路径%\XiaoYao_快速跳转.exe" "%软件安装路径%\辅助\自动弹出常驻窗口.ahk"
     }
 
+return
+
+允许当前窗口自动弹出:
+    gosub,获取自动弹出窗口信息
+
+    if (!EntryExists_AutoPopup){
+        ; 添加到配置列表中
+        NewList := 常驻窗口窗口列表 ? 常驻窗口窗口列表 "`n" NewEntry : NewEntry
+        IniDelete, %软件安装路径%\个人配置.ini,窗口列表1
+        IniWrite, %NewList%, %软件安装路径%\个人配置.ini,窗口列表1
+        ; 添加后重启主程序生效
+        run,"%软件安装路径%\XiaoYao_快速跳转.exe" "%软件安装路径%\主程序.ahk"
+    }
+return
+
+从自动弹出列表中移除:
+    gosub,获取自动弹出窗口信息
+
+    if (EntryExists_AutoPopup){
+        ; 从配置列表中过滤掉当前窗口
+        NewList := ""
+        Loop, Parse, 常驻窗口窗口列表, `n, `r
+        {
+            if !(Trim(A_LoopField) = Trim(NewEntry)){
+                NewList .= (NewList ? "`n" : "") A_LoopField
+            }
+        }
+        IniDelete, %软件安装路径%\个人配置.ini,窗口列表1
+        IniWrite, %NewList%, %软件安装路径%\个人配置.ini,窗口列表1
+        ; 移除后重启常驻窗口辅助脚本生效
+        run,"%软件安装路径%\XiaoYao_快速跳转.exe" "%软件安装路径%\辅助\自动弹出常驻窗口.ahk"
+    }
 return
 
 在该程序中禁用xiaoyao:
@@ -1295,6 +1413,10 @@ class everything_xiaoyao
 
 更新ListView内容(str,分隔符:="|"){
     global 文本框ID
+
+    ; 【核心优化】：关闭控件重绘，防止列表逐条插入时频繁刷新导致的严重卡顿
+    GuiControl, -Redraw, %文本框ID%
+
     LV_Delete()
     Loop, parse, str, %分隔符%
     {
@@ -1315,8 +1437,9 @@ class everything_xiaoyao
     Else
         LV_ModifyCol(1)
     LV_ModifyCol(2)
-    ;LV_Modify(1, "+Focus +Select +Vis")
-    ;ControlFocus,,ahk_id %文本框ID%
+
+    ; 【核心优化】：数据全部添加完毕后，一次性恢复重绘
+    GuiControl, +Redraw, %文本框ID%
 }
 
 ; 设置列宽并限制最大值的函数
@@ -1435,40 +1558,23 @@ DisplayToolTip:
 
     ToolTip, % "名称: " Col1 "`n路径: " Col2 "`n修改时间: " OutTime
 return
+获取自动弹出窗口信息:
+    常驻窗口窗口列表:=Var_Read("","", "窗口列表1",软件安装路径 "\个人配置.ini","是")
+    
+    WinGetTitle, WinTitle22, ahk_id %参数2%
+    WinGetClass, WinClass22, ahk_id %参数2%
+    WinGet, WinExe22, ProcessName, ahk_id %参数2%
+    ; 格式化窗口信息
+    NewEntry := WinTitle22 " ahk_class " WinClass22 " ahk_exe " WinExe22
 
-; === 回调函数：父窗口大小变化 ===
-OnParentSize(wParam, lParam, msg, hwnd)
-{
-    global hGui, hParent
-    if (hwnd != hParent)   ; 只处理目标父窗口的消息
-        return
-
-    if (wParam = 1)        ; SC_MINIMIZE 对应的 wParam 实际上是 1？实际 SC_MINIMIZE 是系统命令，WM_SIZE 的 wParam 表示最小化/最大化/还原：1 最小化，2 最大化，0 还原
+    ; 检查是否已存在相同条目
+    EntryExists_AutoPopup := false
+    Loop, Parse, 常驻窗口窗口列表, `n, `r
     {
-        ; 父窗口最小化 → 最小化 GUI
-        WinMinimize, ahk_id %hGui%
+        ; 比较忽略前后空格
+        if (Trim(A_LoopField) = Trim(NewEntry)){
+            EntryExists_AutoPopup := true
+            break
+        }
     }
-    else if (wParam = 0)   ; 父窗口还原（从最小化还原）
-    {
-        ; 还原 GUI（但要注意如果 GUI 原本是正常状态，需避免反复还原）
-        WinRestore, ahk_id %hGui%
-        ; 可选：将 GUI 置顶到父窗口之上（但不要抢夺焦点）
-        WinSet, Top, , ahk_id %hGui%
-    }
-    ; 其他情况（最大化/还原）可按需处理
-}
-
-; === 回调函数：父窗口激活状态变化 ===
-OnParentActivate(wParam, lParam, msg, hwnd)
-{
-    global hGui, hParent
-    if (hwnd != hParent)
-        return
-
-    if (wParam & 0xFFFF)   ; 低16位非0表示正在激活（如点击标题栏）
-    {
-        ; 父窗口被激活 → 将 GUI 置顶但不激活
-        WinSet, Top, , ahk_id %hGui%
-    }
-    ; 若父窗口失去激活，可不做处理
-}
+Return
